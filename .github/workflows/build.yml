@@ -1,0 +1,42 @@
+name: Build skill references
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/**"
+      - "scripts/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "data/**"
+      - "scripts/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Скрипт проверяет файлы выгрузки и пересоздаёт references/<ВерсияЗУП>/ и index.md;
+      # любая ошибка в data/ — код возврата 1 и падение шага.
+      - name: Build references/ from data/
+        run: python scripts/build_references.py
+
+      - name: Commit and push generated references
+        if: github.event_name != 'pull_request'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add references/
+          git diff --cached --quiet || git commit -m "chore: пересобрать references из data/"
+          git push origin HEAD:main
