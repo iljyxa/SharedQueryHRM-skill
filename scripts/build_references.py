@@ -17,6 +17,13 @@
 - имя файла совпадает с полем "Имя", каталог — с полем "Подсистема";
 - имена представлений внутри версии не повторяются.
 
+Проверки качества выгрузки (только предупреждения в stderr, сборку не останавливают,
+исправляются в обработке SharedQueryDesignerHRM и новой выгрузкой):
+- у поля пустое описание;
+- тип, которым начинается описание поля («Дата — …», «Ссылка на …»), не согласуется с
+  выражением пустого значения (например, ЛОЖЬ у даты или НЕОПРЕДЕЛЕНО у ссылки);
+- ключевое слово языка запросов в выражении не в верхнем регистре (Истина вместо ИСТИНА).
+
 Запуск:
   python scripts/build_references.py
 """
@@ -112,6 +119,57 @@ def load_data() -> tuple[dict[str, list[dict]], list[str]]:
         versions[version_dir.name] = entries
 
     return versions, errors
+
+
+# --- Проверка качества выгрузки ---
+
+# Тип по первому слову описания поля → ожидаемый вид выражения пустого значения.
+DESCRIPTION_KIND_RE = re.compile(r"^(Дата|Булево|Строка|Число|Ссылка)")
+QUERY_KEYWORDS = ("ИСТИНА", "ЛОЖЬ", "НЕОПРЕДЕЛЕНО", "NULL")
+
+
+def expression_kind(expression: str) -> str | None:
+    """Вид выражения пустого значения, как его формирует обработка
+    (ВыражениеПустогоЗначенияПоКолонкеСхемыЗапроса); None — вид не распознан."""
+    text = expression.strip()
+    upper = text.upper()
+    if upper.startswith("ДАТАВРЕМЯ("):
+        return "Дата"
+    if upper in ("ИСТИНА", "ЛОЖЬ"):
+        return "Булево"
+    if text == '""' or upper.startswith('ВЫРАЗИТЬ("" КАК СТРОКА('):
+        return "Строка"
+    if re.fullmatch(r"-?\d+(\.\d+)?", text) or upper.startswith("ВЫРАЗИТЬ(0 КАК ЧИСЛО("):
+        return "Число"
+    if upper.startswith("ЗНАЧЕНИЕ(") and upper.endswith(".ПУСТАЯССЫЛКА)"):
+        return "Ссылка"
+    if upper == "НЕОПРЕДЕЛЕНО":
+        return "Неопределено"
+    return None
+
+
+def quality_warnings(versions: dict[str, list[dict]]) -> list[str]:
+    """Предупреждения о дефектах выгрузки, которые не мешают сборке, но портят карточки."""
+    warnings: list[str] = []
+    for version, entries in versions.items():
+        for entry in entries:
+            prefix = f"{version}/{subsystem_dir_name(entry['Подсистема'])}/{entry['Имя']}"
+            for field in entry["ДоступныеПоля"]:
+                name, expression = field["Имя"], str(field["Выражение"])
+                description = (field.get("Описание") or "").strip()
+                if not description:
+                    warnings.append(f"{prefix}: поле {name} без описания")
+                    continue
+                expected = DESCRIPTION_KIND_RE.match(description)
+                actual = expression_kind(expression)
+                if expected and actual and actual != expected.group(1):
+                    warnings.append(
+                        f"{prefix}: поле {name} — по описанию «{expected.group(1)}», "
+                        f"выражение `{expression}`"
+                    )
+                if expression.strip().upper() in QUERY_KEYWORDS and expression.strip() != expression.strip().upper():
+                    warnings.append(f"{prefix}: поле {name} — ключевое слово не в верхнем регистре: `{expression}`")
+    return warnings
 
 
 # --- Рендеринг ---
@@ -387,6 +445,16 @@ def main() -> int:
     if not versions:
         print("Предупреждение: в data/ нет выгрузок — сгенерирован только пустой references/index.md.")
         return 0
+
+    warnings = quality_warnings(versions)
+    if warnings:
+        print(
+            f"Предупреждений о качестве выгрузки: {len(warnings)} "
+            "(исправляются в обработке SharedQueryDesignerHRM и новой выгрузкой)",
+            file=sys.stderr,
+        )
+        for warning in warnings:
+            print(f"  {warning}", file=sys.stderr)
 
     total = sum(len(v) for v in versions.values())
     print(f"OK: версий {len(versions)}, представлений {total}, файлов {files_written} → {REFERENCES_DIR.relative_to(ROOT)}/")
