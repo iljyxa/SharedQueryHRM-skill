@@ -265,7 +265,7 @@ def render_skeleton(entry: dict) -> list[str]:
     return ["```bsl", *lines, "```", ""]
 
 
-def render_presentation_file(version: str, entry: dict) -> str:
+def render_sharedquery_file(version: str, entry: dict) -> str:
     lines = [
         f"# {entry['Имя']} (ЗУП {version}, подсистема {entry['Подсистема'] or 'Общие'})", "",
         "Сгенерировано из `data/` скриптом `scripts/build_references.py`, вручную не редактируется. "
@@ -301,7 +301,7 @@ def yes_no(flag: bool) -> str:
     return "да" if flag else "—"
 
 
-def presentation_rel_path(version: str, entry: dict) -> str:
+def sharedquery_rel_path(version: str, entry: dict) -> str:
     """Путь к файлу представления относительно корня репозитория."""
     return f"references/{version}/{subsystem_dir_name(entry['Подсистема'])}/{entry['Имя']}.md"
 
@@ -339,7 +339,7 @@ def render_index(versions: dict[str, list[dict]]) -> str:
             lines.append(
                 f"| {e['Имя']} | {md_cell(e['Подсистема'])} | {yes_no(e['Основное'])} | {filter_text} | "
                 f"{yes_no(e['ЕстьИсточникДанных'])} | {yes_no(e['ДоступныОтборы'])} | "
-                f"{yes_no(e['ЕстьПрограммныйИнтерфейс'])} | `{presentation_rel_path(version, e)}` |"
+                f"{yes_no(e['ЕстьПрограммныйИнтерфейс'])} | `{sharedquery_rel_path(version, e)}` |"
             )
         lines.append("")
 
@@ -366,9 +366,9 @@ def write_references(versions: dict[str, list[dict]]) -> int:
     files_written = 0
     for version, entries in versions.items():
         for entry in entries:
-            path = REFERENCES_DIR / presentation_rel_path(version, entry).removeprefix("references/")
+            path = REFERENCES_DIR / sharedquery_rel_path(version, entry).removeprefix("references/")
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(render_presentation_file(version, entry), encoding="utf-8", newline="\n")
+            path.write_text(render_sharedquery_file(version, entry), encoding="utf-8", newline="\n")
             files_written += 1
 
     (REFERENCES_DIR / "index.md").write_text(render_index(versions), encoding="utf-8", newline="\n")

@@ -1,4 +1,4 @@
-# SharedQuerySchemesHRM-skill
+# SharedQueryHRM-skill
 
 AI-скилл, наделяющий агентов знаниями о **представлениях запросов** в конфигурациях на базе
 подсистемы «Зарплата и кадры» (1С:ЗУП 3.1, ЗУП КОРП, ЗКГУ и производные).
@@ -25,8 +25,9 @@ AI-скилл, наделяющий агентов знаниями о **пре�
 ## Структура репозитория
 
 ```text
-SharedQuerySchemesHRM-skill/
+SharedQueryHRM-skill/
 ├── SKILL.md                                  # точка входа агента: когда и как использовать
+├── AGENTS.md                                 # правила для агентов, меняющих сам репозиторий
 ├── references/
 │   ├── механизм-представлений.md             # статичный: синтаксис, поля, параметры, отборы, фильтр, применение
 │   ├── программный-интерфейс.md              # статичный: правила заполнения шаблонов кода ПИ
@@ -35,14 +36,14 @@ SharedQuerySchemesHRM-skill/
 ├── data/
 │   └── <ВерсияЗУП>/<Подсистема>/<Имя>.json   # выгрузка обработки как есть, по каталогу на версию ЗУП
 ├── scripts/
-│   ├── export_presentations.py               # запуск 1С с обработкой → data/<ВерсияЗУП>/ → references/
+│   ├── export_sharedquery.py                 # запуск 1С с обработкой → data/<ВерсияЗУП>/ → references/
 │   └── build_references.py                   # data/ → references/ (для CI и локальной пересборки)
 └── .github/workflows/build.yml               # CI: пересборка references/ при изменении data/ или scripts/
 ```
 
 ## Как это устроено
 
-1. **`scripts/export_presentations.py`** запускает 1С в режиме «Предприятие» с обработкой
+1. **`scripts/export_sharedquery.py`** запускает 1С в режиме «Предприятие» с обработкой
    SharedQueryDesignerHRM и параметром `/C"mode=batch_client;out=<временный каталог>"`. Обработка
    собирает описания представлений **по конфигурации подключённой базы** (подсистемы,
    функциональные опции, типовые модули), пишет по одному файлу `<Подсистема>/<Имя>.json` — уже с
@@ -73,13 +74,13 @@ JSON». Никаких собственных описаний, схем или 
 обработки, Python 3.10+. Внешних зависимостей у скриптов нет.
 
 ```bash
-python scripts/export_presentations.py --zup-version 3.1.38.92 --infobase-path "C:\bases\zup" --username Администратор
+python scripts/export_sharedquery.py --zup-version 3.1.38.92 --infobase-path "C:\bases\zup" --username Администратор
 ```
 
 Серверная база и своя копия обработки:
 
 ```bash
-python scripts/export_presentations.py --zup-version 3.1.38.92 --infobase-server srv --infobase-ref zup_prod --username api --password "secret" --processing "C:\tools\КонструкторПредставленийЗарплатаКадры.epf"
+python scripts/export_sharedquery.py --zup-version 3.1.38.92 --infobase-server srv --infobase-ref zup_prod --username api --password "secret" --processing "C:\tools\КонструкторПредставленийЗарплатаКадры.epf"
 ```
 
 - Если `--processing` не указан, скрипт скачивает `.epf` последнего релиза SharedQueryDesignerHRM

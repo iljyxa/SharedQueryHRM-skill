@@ -38,10 +38,10 @@
                                                       по умолчанию — автоопределение
 
 Примеры:
-  python scripts/export_presentations.py --zup-version 3.1.38.92 \\
+  python scripts/export_sharedquery.py --zup-version 3.1.38.92 \\
       --infobase-path "C:\\bases\\zup" --username Администратор
 
-  python scripts/export_presentations.py --zup-version 3.1.30.116 \\
+  python scripts/export_sharedquery.py --zup-version 3.1.30.116 \\
       --infobase-server srv --infobase-ref zup_prod --username api --password "secret" \\
       --processing "C:\\tools\\КонструкторПредставленийЗарплатаКадры.epf"
 
@@ -216,7 +216,7 @@ def download_latest_processing(dest_dir: Path) -> Path:
     print(f"Обработка не указана — определяю последний релиз {GITHUB_REPO}...")
     headers = {
         "Accept": "application/vnd.github+json",
-        "User-Agent": "SharedQuerySchemesHRM-skill-export",
+        "User-Agent": "SharedQueryHRM-skill-export",
     }
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
@@ -379,7 +379,7 @@ def main() -> int:
 
     temp_processing_dir = None
     processing_path = args.processing
-    out_dir = Path(tempfile.mkdtemp(prefix="zup_presentations_"))
+    out_dir = Path(tempfile.mkdtemp(prefix="zup_sharedquery_"))
     try:
         if not processing_path:
             temp_processing_dir = tempfile.mkdtemp(prefix="shared_query_designer_")
